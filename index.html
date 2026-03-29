@@ -5,34 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Comic Tracker</title>
   <link rel="manifest" href="manifest.webmanifest" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 16px;
+      background: #111;
+      color: #fff;
+    }
+    #status {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
 </head>
 <body>
   <h2>Comic Tracker</h2>
-  <p id="status">Menerima link...</p>
+  <p id="status">Memulai...</p>
 
   <script>
     const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw62bX-I2YLh_XuBI-Pmz5RQABjMX9hyW9Qqb8kBlribGTpjYSzLZmDz2evoXF-zLFl_w/exec";
 
+    function setStatus(msg) {
+      document.getElementById("status").textContent = msg;
+    }
+
     async function sendSharedUrl() {
-      const params = new URLSearchParams(window.location.search);
-
-      const sharedUrl = params.get("url") || "";
-      const sharedTitle = params.get("title") || "";
-      const sharedText = params.get("text") || "";
-
-      const statusEl = document.getElementById("status");
-
-      statusEl.textContent =
-        "Debug | title: " + (sharedTitle || "[kosong]") +
-        " | text: " + (sharedText || "[kosong]") +
-        " | url: " + (sharedUrl || "[kosong]");
-
-      if (!sharedUrl && !sharedTitle && !sharedText) {
-        statusEl.textContent = "Tidak ada link yang diterima.";
-        return;
-      }
-
       try {
+        const params = new URLSearchParams(window.location.search);
+
+        const sharedUrl = params.get("url") || "";
+        const sharedTitle = params.get("title") || "";
+        const sharedText = params.get("text") || "";
+
+        setStatus(
+          "Debug\n" +
+          "title: " + (sharedTitle || "[kosong]") + "\n" +
+          "text: " + (sharedText || "[kosong]") + "\n" +
+          "url: " + (sharedUrl || "[kosong]")
+        );
+
+        if (!sharedUrl && !sharedTitle && !sharedText) {
+          setStatus("Tidak ada link yang diterima.");
+          return;
+        }
+
         const response = await fetch(APPS_SCRIPT_URL, {
           method: "POST",
           headers: {
@@ -47,29 +63,15 @@
         });
 
         const resultText = await response.text();
-        console.log("Response:", resultText);
-
-        try {
-          const result = JSON.parse(resultText);
-          if (result.ok) {
-            statusEl.textContent =
-              "Berhasil disimpan | title: " + (sharedTitle || "[kosong]") +
-              " | text: " + (sharedText || "[kosong]") +
-              " | url: " + (sharedUrl || "[kosong]");
-          } else {
-            statusEl.textContent = "Gagal: " + (result.error || "unknown error");
-          }
-        } catch (err) {
-          statusEl.textContent = "Response tidak valid: " + resultText;
-        }
-      } catch (error) {
-        console.error(error);
-        statusEl.textContent = "Gagal menyimpan.";
+        setStatus(
+          "Response:\n" + resultText + "\n\n" +
+          "title: " + (sharedTitle || "[kosong]") + "\n" +
+          "text: " + (sharedText || "[kosong]") + "\n" +
+          "url: " + (sharedUrl || "[kosong]")
+        );
+      } catch (err) {
+        setStatus("ERROR:\n" + String(err));
       }
-    }
-
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js");
     }
 
     sendSharedUrl();
