@@ -1,55 +1,43 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Comic Tracker</title>
-  <link rel="manifest" href="manifest.webmanifest" />
-</head>
-<body>
-  <h2>Comic Tracker</h2>
-  <p id="status">Menerima link...</p>
+<script>
+  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw62bX-I2YLh_XuBI-Pmz5RQABjMX9hyW9Qqb8kBlribGTpjYSzLZmDz2evoXF-zLFl_w/exec";
 
-  <script>
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbylmOgYNgmQAum90Yo0SGZO0-cZxNS0Rxb4lPunVGzKPhUfsfJhsN1zrsYxaUTrLiMULg/exec";
+  async function sendSharedUrl() {
+    const params = new URLSearchParams(window.location.search);
 
-    async function sendSharedUrl() {
-      const params = new URLSearchParams(window.location.search);
+    const sharedUrl = params.get("url") || "";
+    const sharedTitle = params.get("title") || "";
+    const sharedText = params.get("text") || "";
 
-      const sharedUrl =
-        params.get("url") ||
-        params.get("text") ||
-        "";
-
-      if (!sharedUrl) {
-        document.getElementById("status").textContent = "Tidak ada link yang diterima.";
-        return;
-      }
-
-      document.getElementById("status").textContent = "Menyimpan link...";
-
-      try {
-        const response = await fetch(APPS_SCRIPT_URL, {
-          method: "POST",
-          body: JSON.stringify({
-            action: "shareSave",
-            url: sharedUrl
-          })
-        });
-
-        const result = await response.text();
-        document.getElementById("status").textContent = "Berhasil disimpan.";
-      } catch (error) {
-        document.getElementById("status").textContent = "Gagal menyimpan.";
-        console.error(error);
-      }
+    if (!sharedUrl && !sharedTitle && !sharedText) {
+      document.getElementById("status").textContent = "Tidak ada link yang diterima.";
+      return;
     }
 
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js");
-    }
+    document.getElementById("status").textContent = "Menyimpan link...";
 
-    sendSharedUrl();
-  </script>
-</body>
-</html>
+    try {
+      const response = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "shareSave",
+          url: sharedUrl,
+          title: sharedTitle,
+          text: sharedText
+        })
+      });
+
+      const result = await response.text();
+      document.getElementById("status").textContent = "Berhasil disimpan.";
+      console.log(result);
+    } catch (error) {
+      document.getElementById("status").textContent = "Gagal menyimpan.";
+      console.error(error);
+    }
+  }
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js");
+  }
+
+  sendSharedUrl();
+</script>
