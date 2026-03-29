@@ -1,64 +1,81 @@
-<script>
-  const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw62bX-I2YLh_XuBI-Pmz5RQABjMX9hyW9Qqb8kBlribGTpjYSzLZmDz2evoXF-zLFl_w/exec";
-
-  function setStatus(msg) {
-    document.getElementById("status").textContent = msg;
-  }
-
-  function extractFirstUrl(text) {
-    const s = String(text || "");
-    const m = s.match(/https?:\/\/\S+/i);
-    return m ? m[0] : "";
-  }
-
-  async function sendSharedUrl() {
-    try {
-      const params = new URLSearchParams(window.location.search);
-
-      const sharedTitle = params.get("title") || "";
-      const sharedText = params.get("text") || "";
-      const sharedUrl = params.get("url") || extractFirstUrl(sharedText) || "";
-
-      setStatus(
-        "Debug\n" +
-        "title: " + (sharedTitle || "[kosong]") + "\n" +
-        "text: " + (sharedText || "[kosong]") + "\n" +
-        "url: " + (sharedUrl || "[kosong]")
-      );
-
-      if (!sharedUrl) {
-        setStatus(
-          "Gagal: URL kosong\n\n" +
-          "title: " + (sharedTitle || "[kosong]") + "\n" +
-          "text: " + (sharedText || "[kosong]")
-        );
-        return;
-      }
-
-      const response = await fetch(APPS_SCRIPT_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8"
-        },
-        body: JSON.stringify({
-          action: "shareSave",
-          url: sharedUrl,
-          title: sharedTitle,
-          text: sharedText
-        })
-      });
-
-      const resultText = await response.text();
-      setStatus(
-        "Response:\n" + resultText + "\n\n" +
-        "title: " + (sharedTitle || "[kosong]") + "\n" +
-        "text: " + (sharedText || "[kosong]") + "\n" +
-        "url: " + (sharedUrl || "[kosong]")
-      );
-    } catch (err) {
-      setStatus("ERROR:\n" + String(err));
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comic Tracker</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 16px;
+      background: #111;
+      color: #fff;
     }
-  }
+    #status {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <h2>Comic Tracker</h2>
+  <p id="status">Memulai...</p>
 
-  sendSharedUrl();
-</script>
+  <script>
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw62bX-I2YLh_XuBI-Pmz5RQABjMX9hyW9Qqb8kBlribGTpjYSzLZmDz2evoXF-zLFl_w/exec";
+
+    function setStatus(msg) {
+      document.getElementById("status").textContent = msg;
+    }
+
+    function extractFirstUrl(text) {
+      const s = String(text || "");
+      const m = s.match(/https?:\/\/\S+/i);
+      return m ? m[0] : "";
+    }
+
+    async function sendSharedUrl() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+
+        const sharedTitle = params.get("title") || "";
+        const sharedText = params.get("text") || "";
+        const sharedUrl = params.get("url") || extractFirstUrl(sharedText) || "";
+
+        setStatus(
+          "Debug\n" +
+          "title: " + (sharedTitle || "[kosong]") + "\n" +
+          "text: " + (sharedText || "[kosong]") + "\n" +
+          "url: " + (sharedUrl || "[kosong]")
+        );
+
+        if (!sharedUrl) {
+          setStatus("Gagal: URL kosong");
+          return;
+        }
+
+        const response = await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify({
+            action: "shareSave",
+            url: sharedUrl,
+            title: sharedTitle,
+            text: sharedText
+          })
+        });
+
+        const resultText = await response.text();
+        setStatus("Response:\n" + resultText);
+      } catch (err) {
+        setStatus("ERROR:\n" + String(err));
+      }
+    }
+
+    sendSharedUrl();
+  </script>
+</body>
+</html>
