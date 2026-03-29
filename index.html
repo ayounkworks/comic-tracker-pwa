@@ -59,22 +59,21 @@
           })
         });
 
-        const resultText = await response.text();
-        let ok = false;
+       const resultText = await response.text();
+let result = null;
 
-        try {
-          const result = JSON.parse(resultText);
-          ok = !!result.ok;
-        } catch (e) {}
+try {
+  result = JSON.parse(resultText);
+} catch (e) {}
 
-        if (ok) {
-          setStatus("Tersimpan");
-          setTimeout(() => {
-            window.close();
-          }, 400);
-        } else {
-          setStatus("Gagal");
-        }
+if (result && result.ok) {
+  setStatus("Tersimpan");
+  setTimeout(() => {
+    window.close();
+  }, 400);
+} else {
+  setStatus("Gagal menyimpan\n" + resultText);
+}
       } catch (err) {
         setStatus("Error");
       }
