@@ -12,10 +12,6 @@
       background: #111;
       color: #fff;
     }
-    #status {
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
   </style>
 </head>
 <body>
@@ -43,17 +39,12 @@
         const sharedText = params.get("text") || "";
         const sharedUrl = params.get("url") || extractFirstUrl(sharedText) || "";
 
-        setStatus(
-          "Debug\n" +
-          "title: " + (sharedTitle || "[kosong]") + "\n" +
-          "text: " + (sharedText || "[kosong]") + "\n" +
-          "url: " + (sharedUrl || "[kosong]")
-        );
-
         if (!sharedUrl) {
-          setStatus("Gagal: URL kosong");
+          setStatus("URL kosong");
           return;
         }
+
+        setStatus("Menyimpan...");
 
         const response = await fetch(APPS_SCRIPT_URL, {
           method: "POST",
@@ -69,9 +60,23 @@
         });
 
         const resultText = await response.text();
-        setStatus("Response:\n" + resultText);
+        let ok = false;
+
+        try {
+          const result = JSON.parse(resultText);
+          ok = !!result.ok;
+        } catch (e) {}
+
+        if (ok) {
+          setStatus("Tersimpan");
+          setTimeout(() => {
+            window.close();
+          }, 400);
+        } else {
+          setStatus("Gagal");
+        }
       } catch (err) {
-        setStatus("ERROR:\n" + String(err));
+        setStatus("Error");
       }
     }
 
