@@ -259,7 +259,7 @@
   </div>
 
   <script>
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztZ8go2yHiDAjIHmbPYczShuZSRg6RQ-VSQlEQQeueVED2SpWT-HN_xtXVZBm5SF47KQ/exec';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxfxfoWC9KyKRafXoPECoEqFg62A0LbCydPm4plIJ3AmeaUqaPA_AwIxPyZOrFyPAmpPg/exec';
     let autoSavedOnce = false;
 
     function qs(id){ return document.getElementById(id); }
@@ -305,6 +305,14 @@
         .replace(/>/g,'&gt;')
         .replace(/"/g,'&quot;')
         .replace(/'/g,'&#039;');
+    }
+
+    function extractUrlFromText(text) {
+      const str = String(text || '').trim();
+      if (!str) return '';
+
+      const match = str.match(/https?:\/\/[^\s]+/i);
+      return match ? match[0].trim() : '';
     }
 
     async function saveSharedPayloadDirect(payload){
@@ -385,9 +393,13 @@
 
     async function readShareParamsAndAutoSave(){
       const currentUrl = new URL(window.location.href);
-      const sharedUrl = currentUrl.searchParams.get('url') || '';
+
+      const rawUrl = currentUrl.searchParams.get('url') || '';
       const sharedTitle = currentUrl.searchParams.get('title') || '';
       const sharedText = currentUrl.searchParams.get('text') || '';
+
+      const extractedUrl = extractUrlFromText(sharedText) || extractUrlFromText(sharedTitle);
+      const sharedUrl = rawUrl || extractedUrl;
 
       if (sharedUrl || sharedTitle || sharedText) {
         qs('shareNotice').textContent = 'Data share terdeteksi.';
