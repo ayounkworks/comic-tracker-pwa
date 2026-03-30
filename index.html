@@ -259,7 +259,7 @@
   </div>
 
   <script>
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyGpTj8npHbUAK7xEaMa_pqASIv_cHUczOEb7VvcpP3_bvYeUAMz_MCm87uPgzSvjS2_w/exec';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZ61TFUxjKS5LzrFIBRRgHLA_U6wUF6kQj7XKQvY0D-QZIVSwasyG4nsQlE-pScuPKKA/exec';
     let autoSavedOnce = false;
 
     function qs(id){ return document.getElementById(id); }
@@ -298,23 +298,24 @@
       box.classList.remove('hidden');
     }
 
-    async function saveSharedUrl(){
-      const url = qs('urlInput').value.trim();
-      const title = qs('titleInput').value.trim();
-      const text = qs('textInput').value.trim();
+    function escapeHtml(str){
+      return String(str || '')
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#039;');
+    }
 
-      if (!url) {
-        setStatus('URL kosong.', false);
-        return;
-      }
-
+    async function saveSharedPayloadDirect(payload){
       setStatus('Menyimpan...');
+
       try {
         const endpoint = APPS_SCRIPT_URL +
           '?action=shareSave' +
-          '&url=' + encodeURIComponent(url) +
-          '&title=' + encodeURIComponent(title) +
-          '&text=' + encodeURIComponent(text);
+          '&url=' + encodeURIComponent(payload.url || '') +
+          '&title=' + encodeURIComponent(payload.title || '') +
+          '&text=' + encodeURIComponent(payload.text || '');
 
         const result = await getJson(endpoint);
 
@@ -329,9 +330,24 @@
         }
 
         await loadRecentHistory();
+        window.history.replaceState({}, document.title, window.location.pathname);
+
       } catch (err) {
         setStatus(String(err), false);
       }
+    }
+
+    async function saveSharedUrl(){
+      const url = qs('urlInput').value.trim();
+      const title = qs('titleInput').value.trim();
+      const text = qs('textInput').value.trim();
+
+      if (!url) {
+        setStatus('URL kosong.', false);
+        return;
+      }
+
+      await saveSharedPayloadDirect({ url, title, text });
     }
 
     async function loadRecentHistory(){
@@ -367,40 +383,34 @@
       }
     }
 
-    function escapeHtml(str){
-      return String(str || '')
-        .replace(/&/g,'&amp;')
-        .replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;')
-        .replace(/"/g,'&quot;')
-        .replace(/'/g,'&#039;');
-    }
-
     async function readShareParamsAndAutoSave(){
-      const url = new URL(window.location.href);
-      const sharedUrl = url.searchParams.get('url') || '';
-      const sharedTitle = url.searchParams.get('title') || '';
-      const sharedText = url.searchParams.get('text') || '';
+      const currentUrl = new URL(window.location.href);
+      const sharedUrl = currentUrl.searchParams.get('url') || '';
+      const sharedTitle = currentUrl.searchParams.get('title') || '';
+      const sharedText = currentUrl.searchParams.get('text') || '';
 
       if (sharedUrl || sharedTitle || sharedText) {
-        qs('urlInput').value = sharedUrl;
-        qs('titleInput').value = sharedTitle;
-        qs('textInput').value = sharedText;
-
         qs('shareNotice').textContent = 'Data share terdeteksi.';
         showManualForm(false);
         showShareActions(true);
 
         if (!autoSavedOnce && sharedUrl) {
           autoSavedOnce = true;
+          setStatus('Auto-save berjalan...');
 
           try {
-            setStatus('Auto-save berjalan...');
-            await saveSharedUrl();
+            await saveSharedPayloadDirect({
+              url: sharedUrl,
+              title: sharedTitle,
+              text: sharedText
+            });
           } catch (e) {
             showManualForm(true);
             setStatus('Auto-save gagal. Silakan simpan manual.', false);
           }
+        } else if (!sharedUrl) {
+          showManualForm(true);
+          setStatus('Share diterima, tapi URL tidak ditemukan.', false);
         }
       } else {
         qs('shareNotice').textContent = 'Mode manual.';
