@@ -1,85 +1,173 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Comic Tracker</title>
-  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#111827" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon-192.png" />
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 16px;
-      background: #111;
-      color: #fff;
-    }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f3f4f6;color:#111827;margin:0}
+    .wrap{max-width:720px;margin:0 auto;padding:16px}
+    .card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 6px 20px rgba(0,0,0,.08);margin-bottom:16px}
+    h1{font-size:22px;margin:0 0 12px}
+    h2{font-size:16px;margin:0 0 8px}
+    input,button,textarea{font:inherit}
+    input,textarea{width:100%;box-sizing:border-box;padding:12px;border:1px solid #d1d5db;border-radius:12px;margin-bottom:10px}
+    button{border:none;border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer}
+    .primary{background:#16a34a;color:#fff}
+    .secondary{background:#2563eb;color:#fff}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .item{padding:10px 0;border-top:1px solid #e5e7eb}
+    .title{font-weight:700;font-size:14px;line-height:1.3}
+    .meta{font-size:12px;color:#6b7280;margin-top:4px}
+    .status{font-size:13px;font-weight:700;margin-top:8px}
+    a{color:#2563eb;text-decoration:none}
   </style>
 </head>
 <body>
-  <h2>Comic Tracker</h2>
-  <p id="status">Memulai...</p>
+  <div class="wrap">
+    <div class="card">
+      <h1>Comic Tracker</h1>
+      <div id="shareNotice" class="meta"></div>
+      <input id="urlInput" placeholder="Paste URL chapter di sini" />
+      <input id="titleInput" placeholder="Opsional: judul dari share" />
+      <textarea id="textInput" rows="3" placeholder="Opsional: teks dari share"></textarea>
+      <div class="row">
+        <button id="saveBtn" class="primary">Save URL</button>
+        <button id="refreshBtn" class="secondary">Refresh History</button>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+
+    <div class="card">
+      <h2>Recent History</h2>
+      <div id="historyList"></div>
+    </div>
+  </div>
 
   <script>
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby8_xAtkll2ZYMPF9X04Qqr26Jls4ihO-2niYhk2Ensu5s8VlRoD7s0Ltsp8rm5dMDcmw/exec";
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzZmImzOA2j1jiURVqjwdl9mqiyC3hTannJZk1M2cVf5EcEyTtWsp3KSCgSNqnL0vo4aw/exec';
+    let autoSavedOnce = false;
 
-    function setStatus(msg) {
-      document.getElementById("status").textContent = msg;
+    function qs(id){ return document.getElementById(id); }
+
+    async function getJson(url){
+      const res = await fetch(url);
+      return await res.json();
     }
 
-    function extractFirstUrl(text) {
-      const s = String(text || "");
-      const m = s.match(/https?:\/\/\S+/i);
-      return m ? m[0] : "";
+    function setStatus(text, ok = true){
+      const el = qs('status');
+      el.textContent = text;
+      el.style.color = ok ? '#166534' : '#b91c1c';
     }
 
-    async function sendSharedUrl() {
+    async function saveSharedUrl(){
+      const url = qs('urlInput').value.trim();
+      const title = qs('titleInput').value.trim();
+      const text = qs('textInput').value.trim();
+
+      if (!url) {
+        setStatus('URL kosong.', false);
+        return;
+      }
+
+      setStatus('Menyimpan...');
       try {
-        const params = new URLSearchParams(window.location.search);
+        const endpoint = APPS_SCRIPT_URL +
+          '?action=shareSave' +
+          '&url=' + encodeURIComponent(url) +
+          '&title=' + encodeURIComponent(title) +
+          '&text=' + encodeURIComponent(text);
 
-        const sharedTitle = params.get("title") || "";
-        const sharedText = params.get("text") || "";
-        const sharedUrl = params.get("url") || extractFirstUrl(sharedText) || "";
+        const result = await getJson(endpoint);
 
-        if (!sharedUrl) {
-          setStatus("URL kosong");
-          return;
+        if (result.ok && result.duplicate) {
+          setStatus('Sudah ada di history: ' + (result.masterTitle || '-'));
+        } else if (result.ok) {
+          setStatus('Tersimpan: ' + (result.masterTitle || '-'));
+        } else {
+          setStatus(result.error || 'Gagal simpan.', false);
         }
 
-        setStatus("Menyimpan...");
-
-        const response = await fetch(APPS_SCRIPT_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "text/plain;charset=utf-8"
-          },
-          body: JSON.stringify({
-            action: "shareSave",
-            url: sharedUrl,
-            title: sharedTitle,
-            text: sharedText
-          })
-        });
-
-       const resultText = await response.text();
-let result = null;
-
-try {
-  result = JSON.parse(resultText);
-} catch (e) {}
-
-if (result && result.ok) {
-  setStatus("Tersimpan");
-  setTimeout(() => {
-    window.close();
-  }, 400);
-} else {
-  setStatus("Gagal menyimpan\n" + resultText);
-}
+        await loadRecentHistory();
       } catch (err) {
-        setStatus("Error");
+        setStatus(String(err), false);
       }
     }
 
-    sendSharedUrl();
+    async function loadRecentHistory(){
+      const list = qs('historyList');
+      list.innerHTML = '<div class="meta">Loading...</div>';
+
+      try {
+        const result = await getJson(APPS_SCRIPT_URL + '?action=recentHistory&limit=10');
+        if (!result.ok) {
+          list.innerHTML = '<div class="meta">Gagal ambil history</div>';
+          return;
+        }
+
+        const items = result.items || [];
+        if (!items.length) {
+          list.innerHTML = '<div class="meta">Belum ada history</div>';
+          return;
+        }
+
+        list.innerHTML = '';
+        items.forEach(item => {
+          const row = document.createElement('div');
+          row.className = 'item';
+          row.innerHTML = `
+            <div class="title">${escapeHtml(item.masterTitle || item.siteTitle || '-')}</div>
+            <div class="meta">${escapeHtml(item.chapter ? 'Ch ' + item.chapter : item.site)} • ${escapeHtml(item.timestamp || '')}</div>
+            ${item.url ? `<div class="meta"><a href="${item.url}" target="_blank" rel="noopener">Open</a></div>` : ''}
+          `;
+          list.appendChild(row);
+        });
+      } catch (err) {
+        list.innerHTML = '<div class="meta">' + escapeHtml(String(err)) + '</div>';
+      }
+    }
+
+    function escapeHtml(str){
+      return String(str || '')
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#039;');
+    }
+
+    async function readShareParamsAndAutoSave(){
+      const url = new URL(window.location.href);
+      const sharedUrl = url.searchParams.get('url') || '';
+      const sharedTitle = url.searchParams.get('title') || '';
+      const sharedText = url.searchParams.get('text') || '';
+
+      if (sharedUrl || sharedTitle || sharedText) {
+        qs('urlInput').value = sharedUrl;
+        qs('titleInput').value = sharedTitle;
+        qs('textInput').value = sharedText;
+        qs('shareNotice').textContent = 'Data share terdeteksi. Auto-save berjalan...';
+
+        if (!autoSavedOnce && sharedUrl) {
+          autoSavedOnce = true;
+          await saveSharedUrl();
+        }
+      }
+    }
+
+    qs('saveBtn').addEventListener('click', saveSharedUrl);
+    qs('refreshBtn').addEventListener('click', loadRecentHistory);
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+
+    loadRecentHistory();
+    readShareParamsAndAutoSave();
   </script>
 </body>
 </html>
